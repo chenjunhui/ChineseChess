@@ -316,10 +316,14 @@ wss.on('connection', (ws) => {
           if (game.isSinglePlayer) {
             const newBoard = game.applySinglePlayerUndo()
             if (newBoard) {
-              send(ws, MSG.GAME_UNDO_RESULT, {
-                board: newBoard,
-                turn: game.currentTurn
-              })
+              for (const [clientWs, clientInfo] of clients) {
+                if (clientInfo.tableId === client.tableId) {
+                  send(clientWs, MSG.GAME_UNDO_RESULT, {
+                    board: newBoard,
+                    turn: game.currentTurn
+                  })
+                }
+              }
             }
           } else {
             for (const [clientWs, clientInfo] of clients) {
