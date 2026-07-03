@@ -276,7 +276,6 @@ export class GameState {
   requestUndo(userId) {
     if (this.moveHistory.length === 0) return { error: '没有可以撤销的走法' }
     if (this.isSinglePlayer) {
-      if (this.currentTurn !== RED) return { error: '还没轮到你' }
       return { success: true }
     }
     const lastMoveEntry = this.moveHistory[this.moveHistory.length - 1]
@@ -292,6 +291,22 @@ export class GameState {
       this.currentTurn = this.currentTurn === RED ? BLACK : RED
     }
     this.lastMovePlayer = lastMove.fromPlayer
+    return this.board
+  }
+
+  applySinglePlayerUndo() {
+    if (this.moveHistory.length === 0) return null
+    if (this.currentTurn === RED) {
+      // AI just moved: undo AI's move + player's move before it
+      this.moveHistory.pop()
+      if (this.moveHistory.length > 0) {
+        this.board = this.moveHistory.pop().board
+      }
+    } else {
+      // Player just moved: undo only the player's move
+      this.board = this.moveHistory.pop().board
+    }
+    this.currentTurn = RED
     return this.board
   }
 

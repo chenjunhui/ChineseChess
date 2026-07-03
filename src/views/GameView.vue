@@ -29,24 +29,26 @@
 
     <div v-if="game.gameMode === 'single'" class="mode-tag">单人模式</div>
     <div v-if="game.gameMode === 'ai'" class="mode-tag ai">人机对战 - {{ aiDepthName }}</div>
-    <div v-if="game.thinking" class="thinking-tag">AI 思考中...</div>
 
-    <ChessBoard
-      v-if="game.board"
-      :board="game.board"
-      :my-color="game.myColor"
-      :player-name="lobby.playerName"
-      :opponent-name="game.opponentName"
-      :selected-piece="game.selectedPiece"
-      :valid-moves="game.validMoves"
-      :game-mode="game.gameMode"
-      :current-turn="game.turn"
-      @select="onSelect"
-      @move="onMove"
-    />
+    <div class="board-wrapper">
+      <ChessBoard
+        v-if="game.board"
+        :board="game.board"
+        :my-color="game.myColor"
+        :player-name="lobby.playerName"
+        :opponent-name="game.opponentName"
+        :selected-piece="game.selectedPiece"
+        :valid-moves="game.validMoves"
+        :game-mode="game.gameMode"
+        :current-turn="game.turn"
+        @select="onSelect"
+        @move="onMove"
+      />
+      <div v-if="game.thinking" class="thinking-tag">AI 思考中...</div>
+    </div>
 
     <div class="controls">
-      <button v-if="!game.gameOver && game.lastMove && (game.gameMode === 'single' || game.turn === 'red')" class="undo-btn" @click="game.requestUndo()">
+      <button v-if="!game.gameOver && game.lastMove && (game.gameMode !== 'multiplayer' || game.turn !== game.myColor)" class="undo-btn" @click="game.requestUndo()">
         悔棋
       </button>
       <button class="restart-btn" @click="game.requestRestart()">
@@ -71,6 +73,25 @@
         <div class="undo-actions">
           <button class="accept" @click="game.respondRestart(true)">同意</button>
           <button class="reject" @click="game.respondRestart(false)">拒绝</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="game.confirmVisible" class="undo-dialog">
+      <div class="undo-box">
+        <p>{{ game.confirmMessage }}</p>
+        <div class="undo-actions">
+          <button class="accept" @click="game.resolveConfirm(true)">确定</button>
+          <button class="reject" @click="game.resolveConfirm(false)">取消</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="game.alertVisible" class="undo-dialog">
+      <div class="undo-box">
+        <p>{{ game.alertMessage }}</p>
+        <div class="undo-actions">
+          <button class="accept" @click="game.closeAlert()">确定</button>
         </div>
       </div>
     </div>
@@ -112,11 +133,12 @@ function onMove(fromR, fromC, toR, toC) {
   game.movePiece(fromR, fromC, toR, toC)
 }
 
-function leaveGame() {
+async function leaveGame() {
   if (!game.gameOver) {
     const solo = game.gameMode === 'single' || game.gameMode === 'ai'
     const msg = solo ? '确定要离开对局吗？' : '确定要离开对局吗？离开将判负。'
-    if (!confirm(msg)) return
+    const ok = await game.showConfirm(msg)
+    if (!ok) return
   }
   game.reset()
   showResult.value = false
@@ -264,13 +286,23 @@ function leaveGame() {
 }
 
 .thinking-tag {
-  margin-top: 8px;
-  padding: 4px 12px;
-  background: #FF9800;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 8px 20px;
+  background: rgba(255, 152, 0, 0.9);
   color: white;
-  border-radius: 4px;
-  font-size: 12px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
   animation: pulse 1s infinite;
+  z-index: 10;
+}
+
+.board-wrapper {
+  position: relative;
+  display: inline-block;
 }
 
 .undo-dialog {
@@ -284,42 +316,58 @@ function leaveGame() {
   align-items: center;
   justify-content: center;
   z-index: 100;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 .undo-box {
-  background: white;
-  padding: 32px;
-  border-radius: 12px;
+  background: linear-gradient(135deg, #fff 0%, #f5f5f5 100%);
+  padding: 40px 48px;
+  border-radius: 16px;
   text-align: center;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  min-width: 320px;
 }
 
 .undo-box p {
-  font-size: 18px;
-  margin-bottom: 20px;
-  color: #424242;
+  font-size: 20px;
+  margin-bottom: 28px;
+  color: #333;
+  font-weight: 500;
 }
 
 .undo-actions {
   display: flex;
-  gap: 12px;
+  gap: 16px;
   justify-content: center;
 }
 
 .undo-actions button {
-  padding: 10px 24px;
+  padding: 12px 36px;
   font-size: 16px;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.undo-actions button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.undo-actions button:active {
+  transform: translateY(0);
 }
 
 .undo-actions .accept {
-  background: #4CAF50;
+  background: linear-gradient(135deg, #66BB6A 0%, #43A047 100%);
   color: white;
 }
 
 .undo-actions .reject {
-  background: #f44336;
+  background: linear-gradient(135deg, #EF5350 0%, #E53935 100%);
   color: white;
 }
 </style>

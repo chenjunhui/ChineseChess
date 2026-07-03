@@ -45,7 +45,8 @@ export const useLobbyStore = defineStore('lobby', () => {
     })
 
     wsClient.on(MSG.ERROR, (payload) => {
-      alert(payload.message)
+      const gameStore = useGameStore()
+      gameStore.showAlert(payload.message)
     })
 
     wsClient.connect(wsUrl).then(() => {

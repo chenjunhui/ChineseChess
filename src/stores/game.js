@@ -24,6 +24,12 @@ export const useGameStore = defineStore('game', () => {
   const gameMode = ref('multiplayer')
   const thinking = ref(false)
   const aiDepth = ref(2)
+  let aiTimer = null
+  const confirmMessage = ref('')
+  const confirmVisible = ref(false)
+  let confirmResolve = null
+  const alertMessage = ref('')
+  const alertVisible = ref(false)
 
   const myTurn = computed(() => {
     if (gameMode.value === 'single') return true
@@ -54,13 +60,14 @@ export const useGameStore = defineStore('game', () => {
 
       if (gameMode.value === 'ai' && turn.value !== myColor.value && !gameOver.value) {
         thinking.value = true
-        setTimeout(() => {
+        aiTimer = setTimeout(() => {
+          aiTimer = null
           const move = getAIMove(board.value, turn.value, aiDepth.value)
           if (move && !gameOver.value) {
             wsClient.send(MSG.GAME_MOVE, { from: [move.fromR, move.fromC], to: [move.toR, move.toC] })
           }
           thinking.value = false
-        }, 500)
+        }, 3000)
       }
     })
 
@@ -82,12 +89,17 @@ export const useGameStore = defineStore('game', () => {
     })
 
     wsClient.on(MSG.GAME_UNDO_RESULT, (p) => {
+      if (aiTimer) {
+        clearTimeout(aiTimer)
+        aiTimer = null
+      }
       board.value = p.board
       turn.value = p.turn
       lastMove.value = null
       selectedPiece.value = null
       validMoves.value = []
       pendingUndo.value = false
+      thinking.value = false
     })
 
     wsClient.on(MSG.GAME_RESTART_REQUEST, (p) => {
@@ -96,7 +108,7 @@ export const useGameStore = defineStore('game', () => {
     })
 
     wsClient.on(MSG.ERROR, (p) => {
-      alert(p.message)
+      showAlert(p.message)
     })
   }
 
@@ -119,8 +131,50 @@ export const useGameStore = defineStore('game', () => {
     wsClient.send(MSG.GAME_MOVE, { from: [fromR, fromC], to: [toR, toC] })
   }
 
+  function showAlert(message) {
+    alertMessage.value = message
+    alertVisible.value = true
+  }
+
+  function closeAlert() {
+    alertVisible.value = false
+    alertMessage.value = ''
+  }
+
+  function showConfirm(message) {
+    return new Promise(resolve => {
+      confirmMessage.value = message
+      confirmVisible.value = true
+      confirmResolve = resolve
+    })
+  }
+
+  function resolveConfirm(result) {
+    confirmVisible.value = false
+    confirmMessage.value = ''
+    if (confirmResolve) {
+      confirmResolve(result)
+      confirmResolve = null
+    }
+  }
+
   function requestUndo() {
-    if (gameMode.value === 'ai' && !confirm('要撤回 AI 的走法吗？')) return
+    if (gameMode.value === 'ai' && turn.value === 'red') {
+      showConfirm('要撤回 AI 的走法吗？').then(ok => {
+        if (!ok) return
+        doUndo()
+      })
+    } else {
+      doUndo()
+    }
+  }
+
+  function doUndo() {
+    if (aiTimer) {
+      clearTimeout(aiTimer)
+      aiTimer = null
+    }
+    thinking.value = false
     wsClient.send(MSG.GAME_UNDO, { tableId: tableId.value })
   }
 
@@ -131,8 +185,14 @@ export const useGameStore = defineStore('game', () => {
   }
 
   function requestRestart() {
-    if ((gameMode.value === 'single' || gameMode.value === 'ai') && !confirm('你想重新开始玩吗？')) return
-    wsClient.send(MSG.GAME_RESTART, { tableId: tableId.value })
+    if (gameMode.value === 'single' || gameMode.value === 'ai') {
+      showConfirm('你想重新开始玩吗？').then(ok => {
+        if (!ok) return
+        wsClient.send(MSG.GAME_RESTART, { tableId: tableId.value })
+      })
+    } else {
+      wsClient.send(MSG.GAME_RESTART, { tableId: tableId.value })
+    }
   }
 
   function respondRestart(accept) {
@@ -160,12 +220,22 @@ export const useGameStore = defineStore('game', () => {
     gameMode.value = 'multiplayer'
     thinking.value = false
     aiDepth.value = 2
+    confirmVisible.value = false
+    confirmMessage.value = ''
+    alertVisible.value = false
+    alertMessage.value = ''
+    if (aiTimer) {
+      clearTimeout(aiTimer)
+      aiTimer = null
+    }
   }
 
   return {
     tableId, board, myColor, opponentName, selectedPiece, validMoves,
     turn, gameOver, winner, gameOverReason, lastMove, pendingUndo, undoRequestFrom, myTurn,
     pendingRestart, restartRequestFrom, gameMode, thinking, aiDepth,
+    confirmMessage, confirmVisible, resolveConfirm, showConfirm,
+    alertMessage, alertVisible, showAlert, closeAlert,
     startGame, selectPiece, movePiece, requestUndo, respondUndo, requestRestart, respondRestart, reset
   }
 })

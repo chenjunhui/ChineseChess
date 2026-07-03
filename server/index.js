@@ -241,7 +241,7 @@ wss.on('connection', (ws) => {
           }
 
           if (game.isSinglePlayer) {
-            const newBoard = game.applyUndo(true)
+            const newBoard = game.applySinglePlayerUndo()
             if (newBoard) {
               send(ws, MSG.GAME_UNDO_RESULT, {
                 board: newBoard,

@@ -32,28 +32,30 @@
       @click="$emit('leave')"
     >离开</button>
 
-    <div v-if="showModeDialog" class="mode-dialog">
-      <div class="mode-box">
-        <p>选择游戏模式</p>
-        <div class="mode-actions">
-          <button class="mode-btn single" @click="selectMode('single')">一人玩</button>
-          <button class="mode-btn ai" @click="showDepthDialog = true; showModeDialog = false">人机对玩</button>
-          <button class="mode-btn cancel" @click="cancelMode">取消</button>
+    <Teleport to="body">
+      <div v-if="showModeDialog" class="mode-dialog">
+        <div class="mode-box">
+          <p>选择游戏模式</p>
+          <div class="mode-actions">
+            <button class="mode-btn single" @click="selectMode('single')">一人玩</button>
+            <button class="mode-btn ai" @click="showDepthDialog = true; showModeDialog = false">人机对玩</button>
+            <button class="mode-btn cancel" @click="cancelMode">取消</button>
+          </div>
         </div>
       </div>
-    </div>
 
-    <div v-if="showDepthDialog" class="mode-dialog">
-      <div class="mode-box">
-        <p>选择 AI 难度</p>
-        <div class="mode-actions">
-          <button class="mode-btn easy" @click="selectMode('ai', 1)">简单</button>
-          <button class="mode-btn medium" @click="selectMode('ai', 2)">中等</button>
-          <button class="mode-btn hard" @click="selectMode('ai', 3)">困难</button>
-          <button class="mode-btn cancel" @click="cancelMode">取消</button>
+      <div v-if="showDepthDialog" class="mode-dialog">
+        <div class="mode-box">
+          <p>选择 AI 难度</p>
+          <div class="mode-actions">
+            <button class="mode-btn easy" @click="selectMode('ai', 1)">简单</button>
+            <button class="mode-btn medium" @click="selectMode('ai', 2)">中等</button>
+            <button class="mode-btn hard" @click="selectMode('ai', 3)">困难</button>
+            <button class="mode-btn cancel" @click="cancelMode">取消</button>
+          </div>
         </div>
       </div>
-    </div>
+    </Teleport>
   </div>
 </template>
 
@@ -219,63 +221,78 @@ function cancelMode() {
   align-items: center;
   justify-content: center;
   z-index: 100;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 .mode-box {
-  background: white;
-  padding: 32px;
-  border-radius: 12px;
+  background: linear-gradient(135deg, #fff 0%, #f5f5f5 100%);
+  padding: 40px 48px;
+  border-radius: 16px;
   text-align: center;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  min-width: 320px;
 }
 
 .mode-box p {
-  font-size: 18px;
-  margin-bottom: 20px;
-  color: #424242;
+  font-size: 20px;
+  margin-bottom: 28px;
+  color: #333;
+  font-weight: 500;
 }
 
 .mode-actions {
   display: flex;
-  gap: 12px;
+  gap: 16px;
   justify-content: center;
 }
 
 .mode-btn {
-  padding: 10px 24px;
+  padding: 12px 36px;
   font-size: 16px;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.mode-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.mode-btn:active {
+  transform: translateY(0);
 }
 
 .mode-btn.single {
-  background: #4CAF50;
+  background: linear-gradient(135deg, #66BB6A 0%, #43A047 100%);
   color: white;
 }
 
 .mode-btn.ai {
-  background: #2196F3;
+  background: linear-gradient(135deg, #42A5F5 0%, #1E88E5 100%);
   color: white;
 }
 
 .mode-btn.easy {
-  background: #4CAF50;
+  background: linear-gradient(135deg, #66BB6A 0%, #43A047 100%);
   color: white;
 }
 
 .mode-btn.medium {
-  background: #FF9800;
+  background: linear-gradient(135deg, #FFA726 0%, #FB8C00 100%);
   color: white;
 }
 
 .mode-btn.hard {
-  background: #f44336;
+  background: linear-gradient(135deg, #EF5350 0%, #E53935 100%);
   color: white;
 }
 
 .mode-btn.cancel {
-  background: #9E9E9E;
+  background: linear-gradient(135deg, #BDBDBD 0%, #9E9E9E 100%);
   color: white;
 }
 </style>

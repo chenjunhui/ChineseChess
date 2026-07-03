@@ -124,6 +124,14 @@
 - help-section 设置 `position: sticky; top: 20px`，滚动时固定
 - 默认收拢，点击展开
 
+## 2026-07-03 修改记录
+
+### 悔棋逻辑修复（两个 bug）
+- **Bug 1 — 多人模式红方不能悔棋**：`GameView.vue` 悔棋按钮条件从 `game.turn === 'red'` 改为 `game.turn !== game.myColor`。原来只有黑方走完（轮到红方时）才显示按钮，改为"不是自己的回合时可见"（即刚走完棋的人可悔棋）
+- **Bug 2 — AI 模式只回退一步**：`server/index.js` 单人/AI 模式下 `applyUndo(true)` 连续调用两次，同时回退 AI 的走法和玩家的走法，完整撤销一回合
+- 前端文件：`src/views/GameView.vue`
+- 后端文件：`server/index.js`
+
 ## 待办
 
 ### Git 版本管理 + 推送 GitHub（2026-07-03）
