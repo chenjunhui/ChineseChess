@@ -31,8 +31,10 @@ export const useGameStore = defineStore('game', () => {
   let confirmResolve = null
   const alertMessage = ref('')
   const alertVisible = ref(false)
+  const isSpectator = ref(false)
 
   const myTurn = computed(() => {
+    if (isSpectator.value) return false
     if (gameMode.value === 'single') return true
     return turn.value === myColor.value
   })
@@ -52,6 +54,7 @@ export const useGameStore = defineStore('game', () => {
     gameMode.value = payload.gameMode || 'multiplayer'
     aiDepth.value = payload.aiDepth || 2
     thinking.value = false
+    isSpectator.value = !!payload.isSpectator
 
     wsClient.on(MSG.GAME_MOVED, (p) => {
       board.value = p.board
@@ -66,7 +69,7 @@ export const useGameStore = defineStore('game', () => {
       selectedPiece.value = null
       validMoves.value = []
 
-      if (gameMode.value === 'ai' && turn.value !== myColor.value && !gameOver.value) {
+      if (gameMode.value === 'ai' && !isSpectator.value && turn.value !== myColor.value && !gameOver.value) {
         thinking.value = true
         aiTimer = setTimeout(() => {
           aiTimer = null
@@ -87,7 +90,7 @@ export const useGameStore = defineStore('game', () => {
 
     wsClient.on(MSG.OPPONENT_LEFT, (p) => {
       gameOver.value = true
-      winner.value = myColor.value
+      winner.value = isSpectator.value ? null : myColor.value
       gameOverReason.value = 'opponent_left'
     })
 
@@ -103,8 +106,8 @@ export const useGameStore = defineStore('game', () => {
       }
       board.value = p.board
       turn.value = p.turn
-      lastMoveRed.value = null
-      lastMoveBlack.value = null
+    lastMoveRed.value = payload.lastMoveRed || null
+    lastMoveBlack.value = payload.lastMoveBlack || null
       selectedPiece.value = null
       validMoves.value = []
       pendingUndo.value = false
@@ -122,7 +125,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   function selectPiece(r, c) {
-    if (gameOver.value || thinking.value) return
+    if (isSpectator.value || gameOver.value || thinking.value) return
     if (gameMode.value !== 'single' && !myTurn.value) return
     const piece = board.value[r][c]
     if (!piece || (gameMode.value !== 'single' && piece.color !== myColor.value)) {
@@ -135,7 +138,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   function movePiece(fromR, fromC, toR, toC) {
-    if (gameOver.value || thinking.value) return
+    if (isSpectator.value || gameOver.value || thinking.value) return
     if (gameMode.value !== 'single' && !myTurn.value) return
     wsClient.send(MSG.GAME_MOVE, { from: [fromR, fromC], to: [toR, toC] })
   }
@@ -234,6 +237,7 @@ export const useGameStore = defineStore('game', () => {
     confirmMessage.value = ''
     alertVisible.value = false
     alertMessage.value = ''
+    isSpectator.value = false
     if (aiTimer) {
       clearTimeout(aiTimer)
       aiTimer = null
@@ -243,7 +247,7 @@ export const useGameStore = defineStore('game', () => {
   return {
     tableId, board, myColor, opponentName, selectedPiece, validMoves,
     turn, gameOver, winner, gameOverReason, lastMoveRed, lastMoveBlack, pendingUndo, undoRequestFrom, myTurn,
-    pendingRestart, restartRequestFrom, gameMode, thinking, aiDepth,
+    pendingRestart, restartRequestFrom, gameMode, thinking, aiDepth, isSpectator,
     confirmMessage, confirmVisible, resolveConfirm, showConfirm,
     alertMessage, alertVisible, showAlert, closeAlert,
     startGame, selectPiece, movePiece, requestUndo, respondUndo, requestRestart, respondRestart, reset

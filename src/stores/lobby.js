@@ -11,6 +11,7 @@ export const useLobbyStore = defineStore('lobby', () => {
   const tables = ref([])
   const myTableId = ref(null)
   const mySeat = ref(null)
+  const watchTableId = ref(null)
 
   function connect(name) {
     playerName.value = name
@@ -24,6 +25,9 @@ export const useLobbyStore = defineStore('lobby', () => {
     wsClient.on(MSG.LOBBY_UPDATE, (payload) => {
       const table = tables.value.find(t => t.id === payload.tableId)
       if (table) {
+        if (payload.spectatorCount !== undefined) {
+          table.spectatorCount = payload.spectatorCount
+        }
         if (payload.action === 'leave') {
           if (payload.seatIndex !== null) {
             table.seats[payload.seatIndex] = null
@@ -31,10 +35,12 @@ export const useLobbyStore = defineStore('lobby', () => {
             const idx = table.seats.findIndex(s => s && s.id === payload.player?.id)
             if (idx !== -1) table.seats[idx] = null
           }
-        } else {
+        } else if (payload.seatIndex !== undefined) {
           table.seats[payload.seatIndex] = payload.player
         }
-        table.isPlaying = payload.isPlaying
+        if (payload.isPlaying !== undefined) {
+          table.isPlaying = payload.isPlaying
+        }
       }
     })
 
@@ -65,11 +71,21 @@ export const useLobbyStore = defineStore('lobby', () => {
     wsClient.send(MSG.GAME_SELECT_MODE, { tableId, seatIndex, mode, depth })
   }
 
-  function leave() {
-    wsClient.send(MSG.TABLE_LEAVE, { tableId: myTableId.value })
-    myTableId.value = null
-    mySeat.value = null
+  function watch(tableId) {
+    wsClient.send(MSG.TABLE_WATCH, { tableId })
+    watchTableId.value = tableId
   }
 
-  return { userId, playerName, tables, myTableId, mySeat, connect, sit, selectMode, leave }
+  function leave() {
+    if (watchTableId.value) {
+      wsClient.send(MSG.TABLE_LEAVE, { tableId: watchTableId.value })
+      watchTableId.value = null
+    } else if (myTableId.value) {
+      wsClient.send(MSG.TABLE_LEAVE, { tableId: myTableId.value })
+      myTableId.value = null
+      mySeat.value = null
+    }
+  }
+
+  return { userId, playerName, tables, myTableId, mySeat, watchTableId, connect, sit, selectMode, watch, leave }
 })

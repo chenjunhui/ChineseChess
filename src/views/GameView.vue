@@ -1,30 +1,37 @@
 <template>
   <div class="game-view">
     <div v-if="game.gameOver" class="game-over-banner">
-      <h2 v-if="game.gameOverReason === 'opponent_left'">对方已离开，你赢了!</h2>
+      <h2 v-if="game.isSpectator">{{ game.winner ? (game.winner === 'red' ? '红方获胜!' : '黑方获胜!') : '对局结束' }}</h2>
+      <h2 v-else-if="game.gameOverReason === 'opponent_left'">对方已离开，你赢了!</h2>
       <h2 v-else-if="game.gameMode === 'single' || game.gameMode === 'ai'">{{ game.winner === 'red' ? '红方获胜!' : '黑方获胜!' }}</h2>
       <h2 v-else>{{ game.winner === game.myColor ? '你赢了!' : '你输了!' }}</h2>
     </div>
 
     <div class="game-info">
-      <div class="player-info">
-        <span class="label">对方:</span>
+      <div v-if="game.isSpectator" class="spectator-info">
+        <span class="spectator-tag">旁观中</span>
         <span>{{ game.opponentName }}</span>
-        <span class="color-tag" :class="enemyColor">{{ enemyColorName }}</span>
       </div>
-      <div class="turn-info" :class="{ myTurn: game.myTurn }">
-        <span v-if="game.gameMode === 'single'">
-          {{ turnColorName }}走棋
-        </span>
-        <span v-else>
-          {{ game.myTurn ? '轮到你走棋' : '等待对方走棋' }}
-        </span>
-      </div>
-      <div class="player-info">
-        <span class="label">我:</span>
-        <span>{{ lobby.playerName }}</span>
-        <span class="color-tag" :class="game.myColor">{{ myColorName }}</span>
-      </div>
+      <template v-else>
+        <div class="player-info">
+          <span class="label">对方:</span>
+          <span>{{ game.opponentName }}</span>
+          <span class="color-tag" :class="enemyColor">{{ enemyColorName }}</span>
+        </div>
+        <div class="turn-info" :class="{ myTurn: game.myTurn }">
+          <span v-if="game.gameMode === 'single'">
+            {{ turnColorName }}走棋
+          </span>
+          <span v-else>
+            {{ game.myTurn ? '轮到你走棋' : '等待对方走棋' }}
+          </span>
+        </div>
+        <div class="player-info">
+          <span class="label">我:</span>
+          <span>{{ lobby.playerName }}</span>
+          <span class="color-tag" :class="game.myColor">{{ myColorName }}</span>
+        </div>
+      </template>
     </div>
 
     <div v-if="game.gameMode === 'single'" class="mode-tag">单人模式</div>
@@ -49,7 +56,7 @@
       <div v-if="game.thinking" class="thinking-tag">AI 思考中...</div>
     </div>
 
-    <div class="controls">
+    <div v-if="!game.isSpectator" class="controls">
       <button v-if="!game.gameOver && (game.lastMoveRed || game.lastMoveBlack) && (game.gameMode !== 'multiplayer' || game.turn !== game.myColor)" class="undo-btn" @click="game.requestUndo()">
         悔棋
       </button>
@@ -57,6 +64,9 @@
         重新开始
       </button>
       <button class="leave-btn" @click="leaveGame">离开对局</button>
+    </div>
+    <div v-else class="controls">
+      <button class="leave-btn" @click="leaveGame">退出旁观</button>
     </div>
 
     <div v-if="game.pendingUndo" class="undo-dialog">
@@ -136,6 +146,13 @@ function onMove(fromR, fromC, toR, toC) {
 }
 
 async function leaveGame() {
+  if (game.isSpectator) {
+    game.reset()
+    showResult.value = false
+    lobby.leave()
+    router.push('/')
+    return
+  }
   if (!game.gameOver) {
     const solo = game.gameMode === 'single' || game.gameMode === 'ai'
     const msg = solo ? '确定要离开对局吗？' : '确定要离开对局吗？离开将判负。'
@@ -169,6 +186,23 @@ async function leaveGame() {
 .game-over-banner h2 {
   margin: 0;
   font-size: 24px;
+}
+
+.spectator-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 18px;
+  color: #5D4037;
+}
+
+.spectator-tag {
+  padding: 4px 12px;
+  background: #9C27B0;
+  color: white;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: bold;
 }
 
 .game-info {

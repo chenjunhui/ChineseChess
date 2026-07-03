@@ -20,6 +20,7 @@
                 <li><b>双人对战</b>：两位玩家各坐一方，实时 WebSocket 对弈</li>
                 <li><b>一人玩</b>：一人控制红黑双方，自由练习</li>
                 <li><b>人机对战</b>：与 AI 对弈，支持简单/中等/困难三个难度</li>
+                <li><b>旁观</b>：点击对弈中桌子的「旁观」按钮，可实时观看他人对局，人数不限</li>
               </ul>
             </div>
             <div class="help-item">
@@ -64,9 +65,11 @@
           :table="table"
           :my-table-id="lobby.myTableId"
           :my-seat-index="lobby.mySeat"
+          :spectator-count="table.spectatorCount || 0"
           @sit="onSit"
           @leave="onLeave"
           @select-mode="onSelectMode"
+          @watch="onWatch"
         />
         </div>
       </div>
@@ -99,6 +102,10 @@ function onLeave() {
 
 function onSelectMode(tableId, seatIndex, mode, depth) {
   lobby.selectMode(tableId, seatIndex, mode, depth)
+}
+
+function onWatch(tableId) {
+  lobby.watch(tableId)
 }
 </script>
 

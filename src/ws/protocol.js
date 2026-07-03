@@ -8,6 +8,7 @@ export const MSG = {
   GAME_RESTART: 'game.restart',
   GAME_RESTART_RESPOND: 'game.restart.respond',
   GAME_SELECT_MODE: 'game.select.mode',
+  TABLE_WATCH: 'table.watch',
 
   LOBBY_STATE: 'lobby.state',
   LOBBY_UPDATE: 'lobby.update',

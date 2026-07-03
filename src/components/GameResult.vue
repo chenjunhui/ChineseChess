@@ -1,9 +1,16 @@
 <template>
   <div class="game-result-overlay" @click.self="$emit('close')">
     <div class="game-result">
-      <div class="result-icon">{{ winnerColor === game.myColor ? '🎉' : '😢' }}</div>
-      <h2>{{ winnerColor === game.myColor ? '恭喜你赢了!' : '很遗憾, 你输了' }}</h2>
-      <p>{{ winnerName }} 获胜!{{ reasonText }}</p>
+      <template v-if="game.isSpectator">
+        <div class="result-icon">👀</div>
+        <h2>对局结束</h2>
+        <p>{{ winnerName }} 获胜!{{ reasonText }}</p>
+      </template>
+      <template v-else>
+        <div class="result-icon">{{ winnerColor === game.myColor ? '🎉' : '😢' }}</div>
+        <h2>{{ winnerColor === game.myColor ? '恭喜你赢了!' : '很遗憾, 你输了' }}</h2>
+        <p>{{ winnerName }} 获胜!{{ reasonText }}</p>
+      </template>
       <div class="result-actions">
         <button class="close-btn" @click="$emit('close')">关闭</button>
         <button class="lobby-btn" @click="backToLobby">返回大厅</button>
@@ -25,6 +32,7 @@ defineEmits(['close'])
 
 const winnerColor = computed(() => game.winner)
 const winnerName = computed(() => {
+  if (game.isSpectator) return game.opponentName
   if (game.winner === game.myColor) return lobby.playerName
   return game.opponentName
 })

@@ -4,6 +4,7 @@
       <span class="table-number">第 {{ table.id }} 桌</span>
       <span v-if="table.isPlaying" class="status playing">对弈中</span>
       <span v-else class="status waiting">等待中</span>
+      <span v-if="spectatorCount > 0" class="spectator-count">👀 {{ spectatorCount }}</span>
     </div>
     <div class="seats">
       <div class="seat" :class="{ occupied: table.seats[0] }">
@@ -26,11 +27,18 @@
         >坐下</button>
       </div>
     </div>
-    <button
-      v-if="myTableId === table.id"
-      class="leave-btn"
-      @click="$emit('leave')"
-    >离开</button>
+    <div class="card-actions">
+      <button
+        v-if="table.isPlaying && (!myTableId || myTableId !== table.id)"
+        class="watch-btn"
+        @click="$emit('watch', table.id)"
+      >旁观</button>
+      <button
+        v-if="myTableId === table.id"
+        class="leave-btn"
+        @click="$emit('leave')"
+      >离开</button>
+    </div>
 
     <Teleport to="body">
       <div v-if="showModeDialog" class="mode-dialog">
@@ -65,10 +73,11 @@ import { ref } from 'vue'
 const props = defineProps({
   table: { type: Object, required: true },
   myTableId: { type: Number, default: null },
-  mySeatIndex: { type: Number, default: null }
+  mySeatIndex: { type: Number, default: null },
+  spectatorCount: { type: Number, default: 0 }
 })
 
-const emit = defineEmits(['sit', 'leave', 'selectMode'])
+const emit = defineEmits(['sit', 'leave', 'selectMode', 'watch'])
 
 const showModeDialog = ref(false)
 const showDepthDialog = ref(false)
@@ -196,9 +205,14 @@ function cancelMode() {
   background: #388E3C;
 }
 
-.leave-btn {
-  width: 100%;
+.card-actions {
+  display: flex;
+  gap: 8px;
   margin-top: 12px;
+}
+
+.leave-btn {
+  flex: 1;
   padding: 8px;
   background: #f44336;
   color: white;
@@ -208,6 +222,26 @@ function cancelMode() {
 
 .leave-btn:hover {
   background: #d32f2f;
+}
+
+.watch-btn {
+  flex: 1;
+  padding: 8px;
+  background: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.watch-btn:hover {
+  background: #1976D2;
+}
+
+.spectator-count {
+  font-size: 12px;
+  color: #757575;
+  margin-left: 4px;
 }
 
 .mode-dialog {

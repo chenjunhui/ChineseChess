@@ -4,7 +4,7 @@ import { WebSocketServer } from 'ws'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { MSG, TABLE_COUNT } from './protocol.js'
-import { getTables, getTableById, sitDown, leaveSeat, removeUser } from './rooms.js'
+import { getTables, getTableById, sitDown, leaveSeat, removeUser, addSpectator, removeSpectator } from './rooms.js'
 import { GameState } from './gameState.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -40,6 +40,7 @@ function startGameForTable(tableId, gameMode, aiDepth) {
 
   const mode = gameMode || table.gameMode || (table.seats[0].userId === table.seats[1].userId ? 'single' : 'multiplayer')
   table.gameMode = mode
+  table.aiDepth = aiDepth || 2
   table.isPlaying = true
   const seat0 = table.seats[0]
   const seat1 = table.seats[1]
@@ -52,16 +53,27 @@ function startGameForTable(tableId, gameMode, aiDepth) {
 
   for (const [clientWs, clientInfo] of clients) {
     if (clientInfo.tableId === tableId) {
-      const myColor = clientInfo.userId === seat0.userId ? 'red' : 'black'
-      const opponentName = myColor === 'red' ? seat1.playerName : seat0.playerName
-      send(clientWs, MSG.GAME_START, {
-        tableId,
-        board: gameState.board,
-        yourColor: myColor,
-        opponentName,
-        gameMode: mode,
-        aiDepth: aiDepth || 2
-      })
+      if (clientInfo.isSpectator) {
+        send(clientWs, MSG.GAME_START, {
+          tableId,
+          board: gameState.board,
+          yourColor: null,
+          opponentName: seat0.playerName + ' vs ' + seat1.playerName,
+          gameMode: mode,
+          isSpectator: true
+        })
+      } else {
+        const myColor = clientInfo.userId === seat0.userId ? 'red' : 'black'
+        const opponentName = myColor === 'red' ? seat1.playerName : seat0.playerName
+        send(clientWs, MSG.GAME_START, {
+          tableId,
+          board: gameState.board,
+          yourColor: myColor,
+          opponentName,
+          gameMode: mode,
+          aiDepth: aiDepth || 2
+        })
+      }
     }
   }
 
@@ -121,6 +133,20 @@ wss.on('connection', (ws) => {
         }
 
         case MSG.TABLE_LEAVE: {
+          if (client.isSpectator) {
+            removeSpectator(client.tableId, client.userId)
+            const table = getTableById(client.tableId)
+            if (table) {
+              broadcast(MSG.LOBBY_UPDATE, {
+                tableId: client.tableId,
+                spectatorCount: table.spectators.length
+              })
+            }
+            client.tableId = null
+            client.isSpectator = false
+            break
+          }
+
           const game = games.get(client.tableId)
           if (game) {
             for (const [clientWs, clientInfo] of clients) {
@@ -153,6 +179,53 @@ wss.on('connection', (ws) => {
           }
 
           client.tableId = null
+          break
+        }
+
+        case MSG.TABLE_WATCH: {
+          const table = getTableById(payload.tableId)
+          if (!table) {
+            send(ws, MSG.ERROR, { message: '桌子不存在' })
+            break
+          }
+          if (!table.isPlaying) {
+            send(ws, MSG.ERROR, { message: '该桌没有进行中的对局' })
+            break
+          }
+
+          const result = addSpectator(payload.tableId, client.userId, client.playerName)
+          if (result.error) {
+            send(ws, MSG.ERROR, { message: result.error })
+            break
+          }
+
+          client.tableId = payload.tableId
+          client.isSpectator = true
+
+          const game = games.get(payload.tableId)
+          if (game) {
+            const seat0 = table.seats[0]
+            const seat1 = table.seats[1]
+            const lastMove = game.moveHistory.length > 0 ? game.moveHistory[game.moveHistory.length - 1] : null
+            const lastMoveRed = lastMove && lastMove.fromPlayer === seat0.userId ? { from: lastMove.from, to: lastMove.to } : null
+            const lastMoveBlack = lastMove && lastMove.fromPlayer === seat1.userId ? { from: lastMove.from, to: lastMove.to } : null
+            send(ws, MSG.GAME_START, {
+              tableId: payload.tableId,
+              board: game.board,
+              yourColor: null,
+              opponentName: seat0.playerName + ' vs ' + seat1.playerName,
+              gameMode: table.gameMode,
+              aiDepth: table.aiDepth || 2,
+              isSpectator: true,
+              lastMoveRed,
+              lastMoveBlack
+            })
+          }
+
+          broadcast(MSG.LOBBY_UPDATE, {
+            tableId: payload.tableId,
+            spectatorCount: table.spectators.length
+          })
           break
         }
 
@@ -324,7 +397,16 @@ wss.on('connection', (ws) => {
   ws.on('close', () => {
     const client = clients.get(ws)
     if (client && client.userId) {
-      if (client.tableId) {
+      if (client.isSpectator && client.tableId) {
+        removeSpectator(client.tableId, client.userId)
+        const table = getTableById(client.tableId)
+        if (table) {
+          broadcast(MSG.LOBBY_UPDATE, {
+            tableId: client.tableId,
+            spectatorCount: table.spectators.length
+          })
+        }
+      } else if (client.tableId) {
         const game = games.get(client.tableId)
         if (game) {
           for (const [clientWs, clientInfo] of clients) {
@@ -339,27 +421,28 @@ wss.on('connection', (ws) => {
             table.gameMode = null
           }
         }
-      }
 
-      const table = getTableById(client.tableId)
-      if (table) {
-        for (let i = 0; i < 2; i++) {
-          if (table.seats[i] && table.seats[i].userId === client.userId) {
-            leaveSeat(client.tableId, client.userId)
-            broadcast(MSG.LOBBY_UPDATE, {
-              tableId: client.tableId,
-              seatIndex: i,
-              player: null,
-              action: 'leave',
-              isPlaying: false
-            })
+        const table = getTableById(client.tableId)
+        if (table) {
+          for (let i = 0; i < 2; i++) {
+            if (table.seats[i] && table.seats[i].userId === client.userId) {
+              leaveSeat(client.tableId, client.userId)
+              broadcast(MSG.LOBBY_UPDATE, {
+                tableId: client.tableId,
+                seatIndex: i,
+                player: null,
+                action: 'leave',
+                isPlaying: false
+              })
+            }
           }
+        } else {
+          removeUser(client.userId)
         }
-      } else {
-        removeUser(client.userId)
       }
 
       client.tableId = null
+      client.isSpectator = false
     }
     clients.delete(ws)
     console.log('Client disconnected')

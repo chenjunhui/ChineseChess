@@ -7,7 +7,8 @@ for (let i = 1; i <= TABLE_COUNT; i++) {
     id: i,
     seats: [null, null],
     isPlaying: false,
-    gameMode: null
+    gameMode: null,
+    spectators: []
   })
 }
 
@@ -15,7 +16,8 @@ export function getTables() {
   return tables.map(t => ({
     id: t.id,
     seats: t.seats.map(s => s ? { id: s.userId, name: s.playerName } : null),
-    isPlaying: t.isPlaying
+    isPlaying: t.isPlaying,
+    spectatorCount: t.spectators.length
   }))
 }
 
@@ -73,4 +75,22 @@ export function removeUser(userId) {
     }
   }
   return null
+}
+
+export function addSpectator(tableId, userId, playerName) {
+  const table = getTableById(tableId)
+  if (!table) return { error: '桌子不存在' }
+  if (!table.isPlaying) return { error: '该桌没有进行中的对局' }
+  if (table.spectators.some(s => s.userId === userId)) return { error: '你已经在旁观' }
+  table.spectators.push({ userId, playerName })
+  return { success: true }
+}
+
+export function removeSpectator(tableId, userId) {
+  const table = getTableById(tableId)
+  if (!table) return false
+  const idx = table.spectators.findIndex(s => s.userId === userId)
+  if (idx === -1) return false
+  table.spectators.splice(idx, 1)
+  return true
 }
