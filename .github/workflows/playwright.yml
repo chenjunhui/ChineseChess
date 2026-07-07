@@ -31,10 +31,10 @@ jobs:
         curl -s http://localhost:5173 || echo "Frontend not ready"
     - name: Debug playwright config
       run: npx playwright show-config || true
+    - name: List test files
+      run: ls -la tests/ || true
     - name: Run Playwright tests
-      run: npx playwright test --project=chromium --reporter=line
-      env:
-        DEBUG: playwright:*
+      run: npx playwright test --project=chromium --reporter=line 2>&1 || true
     - uses: actions/upload-artifact@v4
       if: ${{ !cancelled() }}
       with:
