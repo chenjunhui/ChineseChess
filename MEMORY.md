@@ -40,10 +40,6 @@
 - 用户名保存到 localStorage（key: `chess_playerName`），在 `lobby.connect()` 时写入
 - LobbyView `onMounted` 读取并自动连接，跳过登录界面
 
-## 待办
-
-（无）
-
 ### Playwright 自动化测试（2026-07-07 已完成）
 - 测试覆盖：大厅进入、双人对战、单人模式、AI 对战、旁观者、UI 交互、离开游戏室
 - 需同时启动两个服务器：Vite dev server (5173) + Backend server (3000)
@@ -53,3 +49,6 @@
 - lobby store 添加 `disconnect()` 方法：清除 localStorage、断开 WebSocket、重置状态
 - LobbyView 添加"离开游戏室"按钮，点击后回到登录界面
 - wsClient 添加 `isManualClose` 标志，手动关闭时阻止自动重连
+
+## 待办
+（无）
