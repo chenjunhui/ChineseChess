@@ -15,7 +15,7 @@ const server = createServer(app)
 const wss = new WebSocketServer({
   server,
   verifyClient: (info, callback) => {
-    console.log('WebSocket verify:', info.req.headers.host, info.req.url)
+    console.log('WebSocket verify:', info.req.socket.remoteAddress, info.req.headers)
     callback(true)
   }
 })
@@ -98,6 +98,7 @@ function startGameForTable(tableId, gameMode, aiDepth) {
 wss.on('connection', (ws, req) => {
   const ip = req.socket.remoteAddress
   console.log(`Client connected from ${ip}`)
+  ws.on('error', (err) => console.error('WebSocket error:', err.message))
 
   clients.set(ws, { userId: null, playerName: null, tableId: null })
 
