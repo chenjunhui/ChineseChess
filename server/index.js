@@ -12,7 +12,12 @@ const __dirname = dirname(__filename)
 
 const app = express()
 const server = createServer(app)
-const wss = new WebSocketServer({ server })
+const wss = new WebSocketServer({
+  server,
+  verifyClient: (info, callback) => {
+    callback(true)
+  }
+})
 
 app.use(express.static(join(__dirname, '..', 'dist')))
 
